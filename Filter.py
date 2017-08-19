@@ -3,11 +3,13 @@
 # Save suspicious operation involve algorithom
 def GetSuspectOpSet():
     setOp = set()       # An operation set
-    setOp.add("xor")
+    #setOp.add("xor")
     setOp.add("mul")
     setOp.add("imul")
     setOp.add("div")
     setOp.add("idiv")
+    setOp.add("add")
+    setOp.add("adc")
     setOp.add("sub")
     setOp.add("sbb")
     # Add additional intrunction here to filter.
@@ -36,6 +38,18 @@ def IsResetInst(inst):
     return ret
 
 
+# Filtering adjust stack instruction
+def IsAdjustStack(inst):
+    ret = False
+    feature1 = "sub esp, "
+    feature2 = "add esp, "
+    if feature1 in inst:  
+        ret = True
+    if feature2 in inst:  
+        ret = True
+    return ret
+
+
 # Check a block, whether include suspiciours instruction
 # Return True, if it included,
 # Otherwise return False
@@ -52,6 +66,10 @@ def CheckOneBlock(block):
         if op in setOp:
             if op == "xor" and True == IsResetInst(inst):   # Filter xor eax, eax, and so on
                 continue  # Omit special xor instrunction which just reset a register
+            if op == "sub" and True == IsAdjustStack(inst):
+                continue  # Omit sub esp, xxx instruction
+            if op == "add" and True == IsAdjustStack(inst):
+                continue  # Omit add esp, xxx instruction
             flag = True
             lstContainer.append(op)  # Add this operation to list
         pass
@@ -81,8 +99,9 @@ def GetOneBlock(f):
 
 # Get all block from file
 # Return a block list, each item comtains a basic block and its starting address
-def GetBlocksFromFile():
-    fileName = "bblInst.log"
+def GetBlocksFromFile(bblInst_file):
+    #fileName = "bblInst.log"
+    fileName = bblInst_file
     blocks = list()
     i = 0
     with open(fileName, "r") as f1:
@@ -101,8 +120,9 @@ def GetBlocksFromFile():
 
 # Get block counter of execution times
 # Return a dict
-def GetBlockCounter():
-    fileName = "bbl.txt"
+def GetBlockCounter(bbl_file):
+    #fileName = "bbl.txt"
+    fileName = bbl_file
     dictBlockCounter = dict()
     with open(fileName, "r") as f1:
         for line in f1:
@@ -119,9 +139,9 @@ def GetBlockCounter():
 
 # Filter all baisc block
 # Return a list, containing the suspicious block
-def FilterSuspectBlock():
-    blocks = GetBlocksFromFile()
-    dictBlockCounter = GetBlockCounter()
+def FilterSuspectBlock(bblInst_file, bbl_file):
+    blocks = GetBlocksFromFile(bblInst_file)
+    dictBlockCounter = GetBlockCounter(bbl_file)
     len1 = len(blocks)
     result = list()
     debug_i = 0
@@ -192,9 +212,15 @@ def OutputToFile(blocks):
 
 # Main function
 def Main():
-    blocks = FilterSuspectBlock()
-    OutputToFile(blocks)
-    print "Finish!"
+    bblInst_file = "bblInst.log"
+    bbl_file = "bblTracing.log"
+    try:
+        blocks = FilterSuspectBlock(bblInst_file ,bbl_file)
+        OutputToFile(blocks)
+        print "Finish!"
+    except Exception as exp:
+        print "Error: " + str(exp)
+    input("Press any key to continue.")
 
 
 Main()    
